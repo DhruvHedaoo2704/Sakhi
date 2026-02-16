@@ -12,9 +12,18 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
+<<<<<<< HEAD
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
+=======
+    "leaflet": "^1.9.4",
+    "leaflet-routing-machine": "^3.2.12",
+    "lucide-react": "^0.344.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-leaflet": "^4.2.1"
+>>>>>>> 3146c56 (Initial commit: Advanced Safety Routing and Guardian Mode)
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",

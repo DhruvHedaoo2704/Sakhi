@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-space-navy-900 text-white;
+  }
+}
+
+/* --- LEAFLET UI CUSTOMIZATION --- */
+
+/* Themed grayscale map tiles */
+.map-tiles-grayscale {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
+/* Fixed Directions Panel - Consolidated Fix */
+.leaflet-routing-container {
+  /* Dimensions & Positioning */
+  width: 380px !important; 
+  max-width: 90vw !important; 
+  min-height: 100px !important; /* Forces the box to have a visible starting size */
+  max-height: 60vh !important; /* Allows it to grow significantly downward */
+  margin: 20px auto !important;
+  
+  /* Force Visibility */
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  overflow-y: auto !important; 
+  overflow-x: hidden !important;
+
+  /* Sakhi Theme UI */
+  background-color: rgba(10, 25, 41, 0.98) !important;
+  backdrop-filter: blur(12px);
+  border: 2px solid #00e1ff !important;
+  border-radius: 1.5rem !important;
+  padding: 15px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6) !important;
+  font-family: inherit !important;
+  z-index: 1000 !important;
+}
+
+/* Ensure the itinerary internal container is expanded */
+.leaflet-routing-alt {
+  display: block !important;
+  background: transparent !important;
+  max-height: none !important;
+}
+
+/* Prevent Text Overflow inside the box */
+.leaflet-routing-alt table {
+  width: 100% !important;
+  table-layout: fixed !important;
+  border-collapse: collapse !important;
+}
+
+.leaflet-routing-alt td {
+  padding: 12px 8px !important;
+  font-size: 0.95rem !important; 
+  line-height: 1.5 !important;
+  color: #ffffff !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  vertical-align: middle !important;
+}
+
+/* Neon Icon Styling */
+.leaflet-routing-icon {
+  width: 20px !important;
+  height: 20px !important;
+  margin-right: 10px !important;
+  filter: invert(85%) sepia(90%) saturate(1500%) hue-rotate(160deg) !important;
+  opacity: 0.9;
+}
+
+/* Custom Scrollbar for the Expanded List */
+.leaflet-routing-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.leaflet-routing-container::-webkit-scrollbar-thumb {
+  background: #8b5cf6; /* Soft Lavender */
+  border-radius: 10px;
+}
