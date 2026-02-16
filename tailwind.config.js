@@ -48,8 +48,4 @@ export default {
     },
   },
   plugins: [],
-<<<<<<< HEAD
 };
-=======
-};
->>>>>>> 3146c56 (Initial commit: Advanced Safety Routing and Guardian Mode)
