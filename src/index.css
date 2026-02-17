@@ -4,15 +4,41 @@
 
 @layer base {
   body {
-    @apply bg-space-navy-900 text-white;
+    @apply bg-space-navy-900 text-white selection:bg-neon-cyan-500 selection:text-space-navy-900;
   }
+}
+
+@layer components {
+  .glass-panel {
+    @apply backdrop-blur-md bg-opacity-20 bg-space-navy-800 border border-white/10 shadow-glass rounded-2xl;
+  }
+
+  .btn-primary {
+    @apply bg-neon-cyan-500 text-space-navy-900 font-bold py-3 px-6 rounded-xl hover:bg-neon-cyan-400 transition-all duration-300 shadow-neon-cyan hover:scale-[1.02] active:scale-95;
+  }
+
+  .btn-secondary {
+    @apply bg-soft-lavender-500 text-white font-bold py-3 px-6 rounded-xl hover:bg-soft-lavender-400 transition-all duration-300 shadow-neon-lavender hover:scale-[1.02] active:scale-95;
+  }
+}
+
+.map-tiles {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
 }
 
 .map-tiles-grayscale {
   filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
 }
 
+/* Custom Marker Pulse */
+.marker-pulse {
+  background: radial-gradient(circle, rgba(139, 92, 246, 1) 0%, rgba(139, 92, 246, 0) 70%);
+  border-radius: 50%;
+  animation: pulse-slow 2s infinite;
+}
+
 .leaflet-routing-container {
+  @apply glass-panel text-white !important;
   width: 380px !important;
   max-width: 90vw !important;
   min-height: 100px !important;
@@ -23,8 +49,8 @@
   opacity: 1 !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
-  background-color: rgba(10, 25, 41, 0.98) !important;
-  border: 2px solid #00e1ff !important;
+  background-color: rgba(10, 25, 41, 0.85) !important;
+  border: 1px solid rgba(0, 225, 255, 0.3) !important;
   border-radius: 1.5rem !important;
   padding: 15px !important;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6) !important;
@@ -52,6 +78,7 @@
   word-wrap: break-word !important;
   overflow-wrap: break-word !important;
   vertical-align: middle !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .leaflet-routing-icon {
@@ -70,4 +97,3 @@
   background: #8b5cf6;
   border-radius: 10px;
 }
-
