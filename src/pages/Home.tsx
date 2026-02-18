@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { AlertTriangle, Shield, Navigation, ChevronRight, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import heroImage from '../assets/hero-image.png';
+ 
 
 export default function Home() {
   const [isGuardianActive, setIsGuardianActive] = useState(false);

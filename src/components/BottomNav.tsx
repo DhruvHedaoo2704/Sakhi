@@ -1,5 +1,5 @@
-import React from 'react';
-import { Shield, Map, AlertCircle, User } from 'lucide-react';
+// no default React import required with the new JSX runtime
+import { Shield, Map, AlertCircle, User, Clock } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function BottomNav() {
@@ -11,6 +11,7 @@ export default function BottomNav() {
     if (pathname === '/') return 'home';
     if (pathname.startsWith('/map')) return 'map';
     if (pathname.startsWith('/reports')) return 'reports';
+    if (pathname.startsWith('/history')) return 'history';
     if (pathname.startsWith('/profile')) return 'profile';
     return 'home';
   };
@@ -21,6 +22,7 @@ export default function BottomNav() {
     { id: 'home', path: '/', icon: Shield, label: 'Guardian' },
     { id: 'map', path: '/map', icon: Map, label: 'Navigation' },
     { id: 'reports', path: '/reports', icon: AlertCircle, label: 'Reports' },
+    { id: 'history', path: '/history', icon: Clock, label: 'History' },
     { id: 'profile', path: '/profile', icon: User, label: 'Profile' }
   ];
 

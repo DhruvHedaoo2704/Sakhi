@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { User, AuthError } from '@supabase/supabase-js';
+import { User, AuthError, PostgrestError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../types/database';
 
@@ -9,10 +9,12 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  profileCompleted: boolean;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: AuthError | null }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  updateProfile: (data: Partial<Profile>) => Promise<{ error: AuthError | PostgrestError | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,6 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileCompleted, setProfileCompleted] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -55,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw error;
       setProfile(data);
+      setProfileCompleted(data?.profile_completed ?? false);
     } catch (error) {
       console.error('Error fetching profile:', error);
     } finally {
@@ -79,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             full_name: fullName,
             safety_credits: 0,
             emergency_contacts: [],
+            profile_completed: false,
           });
 
         if (profileError) {
@@ -111,8 +116,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateProfile = async (data: Partial<Profile>) => {
+    try {
+      if (!user) throw new Error('No user logged in');
+
+      // Prepare the update data with proper formatting
+      const updateData: any = {
+        updated_at: new Date().toISOString(),
+      };
+
+      // Only include fields that are being updated
+      if (data.age !== undefined) updateData.age = data.age;
+      if (data.gender !== undefined) updateData.gender = data.gender;
+      if (data.phone !== undefined) updateData.phone = data.phone;
+      if (data.occupation !== undefined) updateData.occupation = data.occupation;
+      if (data.address !== undefined) updateData.address = data.address;
+      if (data.emergency_contacts !== undefined) updateData.emergency_contacts = data.emergency_contacts;
+      if (data.avatar_url !== undefined) updateData.avatar_url = data.avatar_url;
+      if (data.profile_completed !== undefined) updateData.profile_completed = data.profile_completed;
+
+      console.log('Updating profile with:', updateData);
+
+      const { data: result, error } = await supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('id', user.id)
+        .select();
+
+      if (error) {
+        console.error('Profile update error:', error);
+        return { error };
+      }
+
+      console.log('Profile updated successfully:', result);
+
+      // Refresh profile after update
+      await fetchProfile(user.id);
+      return { error: null };
+    } catch (error) {
+      console.error('Profile update exception:', error);
+      return { error: error as AuthError };
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signUp, signIn, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, profileCompleted, signUp, signIn, signOut, refreshProfile, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

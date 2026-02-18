@@ -1,152 +1,256 @@
-import { useState, FormEvent } from 'react';
-import { Shield, Mail, Lock, User } from 'lucide-react';
+import { useState, FormEvent, useRef, useEffect } from 'react';
+import { User, Mail, Lock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import '../styles/auth.css';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [registerUsername, setRegisterUsername] = useState('');
+  const [registerEmail, setRegisterEmail] = useState('');
+  const [registerPassword, setRegisterPassword] = useState('');
+  const [registerConfirmPassword, setRegisterConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: string } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const { signIn, signUp } = useAuth();
 
-  const handleSubmit = async (e: FormEvent) => {
+  const showToast = (message: string, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleLoginSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError(null);
     setLoading(true);
 
+    if (!loginEmail || !loginPassword) {
+      showToast('Please fill in all fields', 'error');
+      setLoading(false);
+      return;
+    }
+
+    if (!validateEmail(loginEmail)) {
+      showToast('Please enter a valid email address', 'error');
+      setLoading(false);
+      return;
+    }
+
+    if (loginPassword.length < 6) {
+      showToast('Password must be at least 6 characters', 'error');
+      setLoading(false);
+      return;
+    }
+
     try {
-      if (isLogin) {
-        const { error } = await signIn(email, password);
-        if (error) throw error;
-      } else {
-        if (!fullName.trim()) {
-          throw new Error('Full name is required');
-        }
-        const { error } = await signUp(email, password, fullName);
-        if (error) throw error;
-      }
+      const { error } = await signIn(loginEmail, loginPassword);
+      if (error) throw error;
+      showToast('Login successful!', 'success');
+      setLoginEmail('');
+      setLoginPassword('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      showToast(err instanceof Error ? err.message : 'Login failed', 'error');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleRegisterSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    if (!registerUsername || !registerEmail || !registerPassword || !registerConfirmPassword) {
+      showToast('Please fill in all fields', 'error');
+      setLoading(false);
+      return;
+    }
+
+    if (registerUsername.length < 3) {
+      showToast('Username must be at least 3 characters', 'error');
+      setLoading(false);
+      return;
+    }
+
+    if (!validateEmail(registerEmail)) {
+      showToast('Please enter a valid email address', 'error');
+      setLoading(false);
+      return;
+    }
+
+    if (registerPassword.length < 6) {
+      showToast('Password must be at least 6 characters', 'error');
+      setLoading(false);
+      return;
+    }
+
+    if (registerPassword !== registerConfirmPassword) {
+      showToast('Passwords do not match', 'error');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { error } = await signUp(registerEmail, registerPassword, registerUsername);
+      if (error) throw error;
+      showToast('Account created successfully! Please login.', 'success');
+      setRegisterUsername('');
+      setRegisterEmail('');
+      setRegisterPassword('');
+      setRegisterConfirmPassword('');
+      setTimeout(() => setIsLogin(true), 1500);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Registration failed', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (containerRef.current) {
+      if (!isLogin) {
+        containerRef.current.classList.add('active');
+      } else {
+        containerRef.current.classList.remove('active');
+      }
+    }
+  }, [isLogin]);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-space-navy-900 via-space-navy-800 to-space-navy-700 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-neon-cyan-500 to-soft-lavender-500 rounded-full mb-4 shadow-neon-cyan">
-            <Shield size={40} className="text-space-navy-900" />
-          </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-neon-cyan-400 to-soft-lavender-400 bg-clip-text text-transparent">
-            Sakhi
-          </h1>
-          <p className="text-gray-400 mt-2">Your safety companion</p>
-        </div>
+    <div className="auth-page">
+      <div className="auth-container" ref={containerRef}>
+        <div className="curved-shape"></div>
+        <div className="curved-shape2"></div>
 
-        <div className="bg-space-navy-700 rounded-2xl shadow-2xl p-8 border border-space-navy-600">
-          <div className="flex space-x-2 mb-6">
-            <button
-              onClick={() => setIsLogin(true)}
-              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-smooth ${
-                isLogin
-                  ? 'bg-neon-cyan-500 text-space-navy-900 shadow-neon-cyan'
-                  : 'bg-space-navy-600 text-gray-400'
-              }`}
-            >
-              Login
-            </button>
-            <button
-              onClick={() => setIsLogin(false)}
-              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-smooth ${
-                !isLogin
-                  ? 'bg-soft-lavender-500 text-white shadow-neon-lavender'
-                  : 'bg-space-navy-600 text-gray-400'
-              }`}
-            >
-              Sign Up
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Full Name
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-space-navy-600 border border-space-navy-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-neon-cyan-500 focus:border-transparent transition-smooth"
-                    placeholder="Enter your name"
-                    required={!isLogin}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Email
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-space-navy-600 border border-space-navy-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-neon-cyan-500 focus:border-transparent transition-smooth"
-                  placeholder="your@email.com"
-                  required
-                />
-              </div>
+        {/* Login Form Section */}
+        <div className="form-box Login">
+          <h2 className="animation" style={{ '--D': 0, '--S': 21 } as any}>Login</h2>
+          <form onSubmit={handleLoginSubmit}>
+            <div className="input-box animation" style={{ '--D': 1, '--S': 22 } as any}>
+              <input
+                type="email"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                placeholder=" "
+                required
+              />
+              <label>Email</label>
+              <Mail size={20} color="gray" />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-space-navy-600 border border-space-navy-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-neon-cyan-500 focus:border-transparent transition-smooth"
-                  placeholder="••••••••"
-                  required
-                  minLength={6}
-                />
-              </div>
+            <div className="input-box animation" style={{ '--D': 2, '--S': 23 } as any}>
+              <input
+                type="password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                placeholder=" "
+                required
+              />
+              <label>Password</label>
+              <Lock size={20} color="gray" />
             </div>
 
-            {error && (
-              <div className="p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-sm">
-                {error}
-              </div>
-            )}
+            <div className="input-box animation" style={{ '--D': 3, '--S': 24 } as any}>
+              <button className="btn" type="submit" disabled={loading}>
+                {loading ? 'Logging in...' : 'Login'}
+              </button>
+            </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className={`w-full py-3 px-4 rounded-lg font-medium text-white transition-smooth haptic-press ${
-                isLogin
-                  ? 'bg-gradient-to-r from-neon-cyan-500 to-neon-cyan-600 hover:from-neon-cyan-600 hover:to-neon-cyan-700 shadow-neon-cyan'
-                  : 'bg-gradient-to-r from-soft-lavender-500 to-soft-lavender-600 hover:from-soft-lavender-600 hover:to-soft-lavender-700 shadow-neon-lavender'
-              } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {loading ? 'Loading...' : isLogin ? 'Sign In' : 'Create Account'}
-            </button>
+            <div className="regi-link animation" style={{ '--D': 4, '--S': 25 } as any}>
+              <p>Don't have an account? <a href="#" onClick={(e) => { e.preventDefault(); setIsLogin(false); }} className="SignUpLink">Sign Up</a></p>
+            </div>
           </form>
         </div>
+
+        {/* Login Info Section */}
+        <div className="info-content Login">
+          <h2 className="animation" style={{ '--D': 0, '--S': 20 } as any}>Welcome Back</h2>
+          <p className="animation" style={{ '--D': 1, '--S': 21 } as any}>Welcome back — sign in to access your guardians, trip history, and safety tools.</p>
+        </div>
+
+        {/* Sign Up Form Section */}
+        <div className="form-box Register">
+          <h2 className="animation" style={{ '--li': 17, '--S': 0 } as any}>Sign Up</h2>
+          <form onSubmit={handleRegisterSubmit}>
+            <div className="input-box animation" style={{ '--li': 18, '--S': 1 } as any}>
+              <input
+                type="text"
+                value={registerUsername}
+                onChange={(e) => setRegisterUsername(e.target.value)}
+                placeholder=" "
+                required
+              />
+              <label>Username</label>
+              <User size={20} color="gray" />
+            </div>
+
+            <div className="input-box animation" style={{ '--li': 19, '--S': 2 } as any}>
+              <input
+                type="email"
+                value={registerEmail}
+                onChange={(e) => setRegisterEmail(e.target.value)}
+                placeholder=" "
+                required
+              />
+              <label>Email</label>
+              <Mail size={20} color="gray" />
+            </div>
+
+            <div className="input-box animation" style={{ '--li': 19, '--S': 3 } as any}>
+              <input
+                type="password"
+                value={registerPassword}
+                onChange={(e) => setRegisterPassword(e.target.value)}
+                placeholder=" "
+                required
+              />
+              <label>Password</label>
+              <Lock size={20} color="gray" />
+            </div>
+
+            <div className="input-box animation" style={{ '--li': 20, '--S': 4 } as any}>
+              <input
+                type="password"
+                value={registerConfirmPassword}
+                onChange={(e) => setRegisterConfirmPassword(e.target.value)}
+                placeholder=" "
+                required
+              />
+              <label>Confirm Password</label>
+              <Lock size={20} color="gray" />
+            </div>
+
+            <div className="input-box animation" style={{ '--li': 20, '--S': 5 } as any}>
+              <button className="btn" type="submit" disabled={loading}>
+                {loading ? 'Creating Account...' : 'Sign Up'}
+              </button>
+            </div>
+
+            <div className="regi-link animation" style={{ '--li': 21, '--S': 6 } as any}>
+              <p>Already have an account? <a href="#" onClick={(e) => { e.preventDefault(); setIsLogin(true); }} className="SignInLink">Sign In</a></p>
+            </div>
+          </form>
+        </div>
+
+        {/* Sign Up Info Section */}
+        <div className="info-content Register">
+          <h2 className="animation" style={{ '--li': 17, '--S': 0 } as any}>Create Account</h2>
+          <p className="animation" style={{ '--li': 18, '--S': 1 } as any}>Join Sakhi — create an account to keep loved ones informed and stay safer on every trip.</p>
+        </div>
       </div>
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`toast show ${toast.type}`}>
+          {toast.message}
+        </div>
+      )}
     </div>
   );
 }
