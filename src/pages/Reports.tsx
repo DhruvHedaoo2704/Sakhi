@@ -1,11 +1,73 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { AlertCircle, Camera, MapPin, Send } from 'lucide-react';
+import { AlertCircle, Camera, MapPin, Send, X } from 'lucide-react';
 
 export default function Reports() {
   const [description, setDescription] = useState('');
+  const [reportType, setReportType] = useState<'broken_light' | 'unsafe_area' | 'safe_spot' | 'other'>('other');
   const [severity, setSeverity] = useState(3);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [locationLabel, setLocationLabel] = useState('');
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!photoFile) {
+      setPhotoPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(photoFile);
+    setPhotoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [photoFile]);
+
+  async function reverseGeocode(lat: number, lng: number) {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    if (!res.ok) throw new Error('Failed to reverse geocode');
+    return res.json();
+  }
+
+  async function geocodeAddress(query: string) {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    if (!res.ok) throw new Error('Failed to geocode');
+    const data = await res.json();
+    return data?.[0] as { lat: string; lon: string; display_name: string } | undefined;
+  }
+
+  async function handleAutoLocate() {
+    if (!('geolocation' in navigator)) {
+      alert('Geolocation is not supported by this browser.');
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setCoords({ lat: latitude, lng: longitude });
+        try {
+          const data = await reverseGeocode(latitude, longitude);
+          setLocationLabel(data?.display_name || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+        } catch (err) {
+          console.error(err);
+          setLocationLabel(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      (error) => {
+        console.error('Auto locate error', error);
+        alert(error.message || 'Failed to access location.');
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+    );
+  }
 
   /**
    * COMMUNITY REPORT SUBMISSION
@@ -20,12 +82,51 @@ export default function Reports() {
       return alert("Please enter a description of the hazard.");
     }
 
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return alert('Please sign in to submit a report.');
+    }
+
+    let resolvedCoords = coords;
+    if (!resolvedCoords && locationLabel.trim()) {
+      try {
+        const data = await geocodeAddress(locationLabel.trim());
+        if (data) {
+          resolvedCoords = { lat: parseFloat(data.lat), lng: parseFloat(data.lon) };
+          setCoords(resolvedCoords);
+          setLocationLabel(data.display_name);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    if (!resolvedCoords) {
+      return alert('Please add a location or use Auto Locate.');
+    }
+
     setIsSubmitting(true);
     
     try {
+      let photoUrl: string | null = null;
+      if (photoFile) {
+        const path = `${user.id}/report-${Date.now()}-${photoFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('report-photos')
+          .upload(path, photoFile, { upsert: true });
+
+        if (uploadError) throw uploadError;
+        const publicUrl = supabase.storage.from('report-photos').getPublicUrl(path);
+        photoUrl = publicUrl.data.publicUrl || null;
+      }
+
       const { error } = await supabase.from('safety_reports').insert({
-        type: 'COMMUNITY_REPORT',
+        user_id: user.id,
+        report_type: reportType,
         description: description,
+        latitude: resolvedCoords.lat,
+        longitude: resolvedCoords.lng,
+        photo_url: photoUrl,
         severity: severity,
         status: 'pending'
       });
@@ -35,7 +136,11 @@ export default function Reports() {
       alert("Thank you! Your report has been submitted for community verification.");
       // Reset form on success
       setDescription('');
+      setReportType('other');
       setSeverity(3);
+      setCoords(null);
+      setLocationLabel('');
+      setPhotoFile(null);
     } catch (err) {
       console.error("Report Error:", err);
       alert("Something went wrong. Please check your network and try again.");
@@ -73,6 +178,23 @@ export default function Reports() {
           />
         </div>
 
+        {/* REPORT TYPE */}
+        <div className="space-y-3">
+          <label className="text-sm font-bold text-gray-300 uppercase tracking-widest">
+            Report Type
+          </label>
+          <select
+            value={reportType}
+            onChange={(e) => setReportType(e.target.value as typeof reportType)}
+            className="w-full p-4 rounded-2xl bg-space-navy-800 border border-space-navy-700 focus:border-neon-cyan-500 outline-none text-sm"
+          >
+            <option value="broken_light" className="bg-space-navy-900">Broken Street Light</option>
+            <option value="unsafe_area" className="bg-space-navy-900">Unsafe Area</option>
+            <option value="safe_spot" className="bg-space-navy-900">Safe Spot</option>
+            <option value="other" className="bg-space-navy-900">Other</option>
+          </select>
+        </div>
+
         {/* SEVERITY SLIDER */}
         <div className="space-y-4">
           <div className="flex justify-between items-center">
@@ -100,22 +222,79 @@ export default function Reports() {
           </div>
         </div>
 
-        {/* ACTION BUTTONS: Add Photo and Location */}
-        <div className="grid grid-cols-2 gap-4">
-          <button 
-            type="button" 
-            className="flex items-center justify-center gap-3 p-5 rounded-2xl bg-space-navy-800 border border-space-navy-700 active:bg-space-navy-700 transition-colors"
-          >
-            <Camera size={20} className="text-neon-cyan-500" />
-            <span className="text-sm font-bold">Add Photo</span>
-          </button>
-          <button 
-            type="button" 
-            className="flex items-center justify-center gap-3 p-5 rounded-2xl bg-space-navy-800 border border-space-navy-700 active:bg-space-navy-700 transition-colors"
-          >
-            <MapPin size={20} className="text-neon-cyan-500" />
-            <span className="text-sm font-bold">Auto Locate</span>
-          </button>
+        {/* LOCATION */}
+        <div className="space-y-3">
+          <label className="text-sm font-bold text-gray-300 uppercase tracking-widest">
+            Hazard Location
+          </label>
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={locationLabel}
+              onChange={(e) => {
+                setLocationLabel(e.target.value);
+                setCoords(null);
+              }}
+              placeholder="Auto-locate or type an address"
+              className="flex-1 p-4 rounded-2xl bg-space-navy-800 border border-space-navy-700 focus:border-neon-cyan-500 outline-none text-sm"
+            />
+            <button
+              type="button"
+              onClick={handleAutoLocate}
+              className="px-4 rounded-2xl bg-space-navy-800 border border-space-navy-700 active:bg-space-navy-700 transition-colors flex items-center gap-2"
+              disabled={isLocating}
+            >
+              <MapPin size={18} className="text-neon-cyan-500" />
+              <span className="text-xs font-bold">{isLocating ? 'LOCATING' : 'AUTO'}</span>
+            </button>
+          </div>
+          {coords && (
+            <p className="text-xs text-gray-500">
+              {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+            </p>
+          )}
+        </div>
+
+        {/* PHOTO UPLOAD */}
+        <div className="space-y-3">
+          <label className="text-sm font-bold text-gray-300 uppercase tracking-widest">
+            Attach Photo
+          </label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0] || null;
+              setPhotoFile(file);
+            }}
+          />
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center justify-center gap-3 px-5 py-4 rounded-2xl bg-space-navy-800 border border-space-navy-700 active:bg-space-navy-700 transition-colors"
+            >
+              <Camera size={20} className="text-neon-cyan-500" />
+              <span className="text-sm font-bold">{photoFile ? 'Replace Photo' : 'Add Photo'}</span>
+            </button>
+            {photoFile && (
+              <button
+                type="button"
+                onClick={() => setPhotoFile(null)}
+                className="flex items-center gap-2 text-xs text-gray-400 hover:text-red-400"
+              >
+                <X size={14} />
+                Remove
+              </button>
+            )}
+          </div>
+          {photoPreview && (
+            <div className="relative w-full max-w-xs">
+              <img src={photoPreview} alt="Report preview" className="rounded-2xl border border-space-navy-700" />
+            </div>
+          )}
         </div>
 
         {/* SUBMIT BUTTON */}

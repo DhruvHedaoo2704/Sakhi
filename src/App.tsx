@@ -10,7 +10,6 @@ const Home = lazy(() => import('./pages/Home'));
 const Reports = lazy(() => import('./pages/Reports'));
 const Profile = lazy(() => import('./pages/Profile'));
 const MapNavigation = lazy(() => import('./pages/MapNavigation'));
-const History = lazy(() => import('./pages/History'));
 
 function AnimatedRoutes({ isAuthenticated, profileCompleted }: { isAuthenticated: boolean; profileCompleted: boolean }) {
   const location = useLocation();
@@ -44,7 +43,6 @@ function AnimatedRoutes({ isAuthenticated, profileCompleted }: { isAuthenticated
         <Route path="/" element={<Home />} />
         <Route path="/map" element={<MapNavigation />} />
         <Route path="/reports" element={<Reports />} />
-        <Route path="/history" element={<History />} />
         <Route path="/profile" element={<Profile />} />
       </Routes>
     </AnimatePresence>
